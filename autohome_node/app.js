@@ -204,7 +204,7 @@ async function fakeMoving(page, lastHeight = 100) {
  */
 async function run(params) {
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: false,
     timeout: 0
   })
   let brandData = await fetchBrand()
