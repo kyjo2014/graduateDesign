@@ -1,0 +1,26 @@
+{
+  "name": "youxin_node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "cheerio": "^1.0.0-rc.2",
+    "chrome-remote-interface": "^0.25.5",
+    "express": "^4.16.3",
+    "log4js": "^2.5.3",
+    "mysql2": "^1.5.2",
+    "normalizr": "^3.2.4",
+    "pinyin": "^2.8.3",
+    "puppeteer-cn": "^0.1.7",
+    "sequelize": "^4.36.1"
+  },
+  "devDependencies": {
+    "chalk": "^2.3.2"
+  }
+}
