@@ -8,8 +8,34 @@ const log4js = require('log4js')
 const iconv = require('iconv-lite')
 const puppeteer = require('puppeteer-cn')
 const { normalize, schema } = require('normalizr')
+const fs = require('fs')
 
 const app = express()
+log4js.configure({
+  appenders: {
+      default: {
+          level: 'INFO',
+          type: 'file',
+          filename: './log/default.log'
+      }
+  },
+  categories: {
+      default: {
+          appenders: [
+              'default'
+          ],
+          level: 'INFO'
+      }
+  }
+
+})
+const logger = log4js.getLogger('default');
+const sequelize = new Seq('ershouche', 'root', 'lth111111122', {
+  host: 'localhost',
+  port: 3306,
+  dialect: 'mysql',
+  timestamps: false
+})
 const User_Agent = [
   'Mozilla/5.0 (iPod; U; CPU iPhone OS 4_3_2 like Mac OS X; zh-cn) AppleWebKit/533.' +
     '17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5',
@@ -208,9 +234,9 @@ async function run(params) {
     timeout: 0
   })
   let brandData = await fetchBrand()
-  for (let i = 0; i < 1 /*brandData.length*/; i++) {
+  for (let i = 0; i < brandData.length; i++) {
     const curBrand = brandData[i]
-    for (let j = 0; j < 1 /*curBrand.sub.length*/; j++) {
+    for (let j = 0; j < curBrand.sub.length; j++) {
       const page = await browser.newPage()
       await page.goto(`https:${curBrand.sub[j].bbs}`)
       await page.evaluate(
@@ -218,9 +244,10 @@ async function run(params) {
       )
       await page.goto(`https:${curBrand.sub[j].bbs.split('#')[0]}?type=101`)
       let curCarComment = await goToComment(browser, page)
-      console.log(curCarComment)
+      logger.info(JSON.stringify(curCarComment))
     }
   }
+  await browser.close()
 }
 // let cssMap = await createCSSMap(page)
 // let carConfig = await getCarConfig(page)
