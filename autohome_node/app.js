@@ -5,90 +5,50 @@ const cheerio = require('cheerio')
 const chalk = require('chalk')
 const Url = require('url')
 const log4js = require('log4js')
-const iconv = require('iconv-lite')
-const puppeteer = require('puppeteer-cn')
-const { normalize, schema } = require('normalizr')
-const fs = require('fs')
 
+const puppeteer = require('puppeteer-cn')
+const fs = require('fs')
+const path = require('path')
+const fetchBrand = require('./carea')
+const { normalize, schema } = require('normalizr')
+const { database, user, password } = require('./config/db.js')
+
+const User_Agent = require('./config/UA.js')
+const { waitOption, clickOption } = require('./config/puppeteerPreset')
 const app = express()
 log4js.configure({
   appenders: {
-      default: {
-          level: 'INFO',
-          type: 'file',
-          filename: './log/default.log'
-      }
+    default: {
+      level: 'INFO',
+      type: 'file',
+      filename: './log/default.log'
+    }
   },
   categories: {
-      default: {
-          appenders: [
-              'default'
-          ],
-          level: 'INFO'
-      }
+    default: {
+      appenders: ['default'],
+      level: 'INFO'
+    }
   }
-
 })
-const logger = log4js.getLogger('default');
-const sequelize = new Seq('ershouche', 'root', 'lth111111122', {
+const logger = log4js.getLogger('default')
+const sequelize = new Seq(database, user, password, {
   host: 'localhost',
   port: 3306,
   dialect: 'mysql',
-  timestamps: false
+  timestamps: false,
+  logging: () => {}
 })
-const User_Agent = [
-  'Mozilla/5.0 (iPod; U; CPU iPhone OS 4_3_2 like Mac OS X; zh-cn) AppleWebKit/533.' +
-    '17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5',
-  'Mozilla/5.0 (iPhone; U; CPU iPhone OS 4_3_2 like Mac OS X; zh-cn) AppleWebKit/53' +
-    '3.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8H7 Safari/6533.18.5',
-  'MQQBrowser/25 (Linux; U; 2.3.3; zh-cn; HTC Desire S Build/GRI40;480*800)',
-  'Mozilla/5.0 (Linux; U; Android 2.3.3; zh-cn; HTC_DesireS_S510e Build/GRI40) Appl' +
-    'eWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1',
-  'Mozilla/5.0 (SymbianOS/9.3; U; Series60/3.2 NokiaE75-1 /110.48.125 Profile/MIDP-' +
-    '2.1 Configuration/CLDC-1.1 ) AppleWebKit/413 (KHTML, like Gecko) Safari/413',
-  'Mozilla/5.0 (iPad; U; CPU OS 4_3_3 like Mac OS X; zh-cn) AppleWebKit/533.17.9 (K' +
-    'HTML, like Gecko) Mobile/8J2',
-  'Mozilla/5.0 (Windows NT 5.2) AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.' +
-    '742.122 Safari/534.30',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/535.1 (KHTML, like Ge' +
-    'cko) Chrome/14.0.835.202 Safari/535.1',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_2) AppleWebKit/534.51.22 (KHTML, lik' +
-    'e Gecko) Version/5.1.1 Safari/534.51.22',
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML,' +
-    ' like Gecko) Version/5.1 Mobile/9A5313e Safari/7534.48.3',
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML,' +
-    ' like Gecko) Version/5.1 Mobile/9A5313e Safari/7534.48.3',
-  'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML,' +
-    ' like Gecko) Version/5.1 Mobile/9A5313e Safari/7534.48.3',
-  'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.8' +
-    '35.202 Safari/535.1',
-  'Mozilla/5.0 (compatible; MSIE 9.0; Windows Phone OS 7.5; Trident/5.0; IEMobile/9' +
-    '.0; SAMSUNG; OMNIA7)',
-  'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0; XBLWP7; ZuneWP7)',
-  'Mozilla/5.0 (Windows NT 5.2) AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.' +
-    '742.122 Safari/534.30',
-  'Mozilla/5.0 (Windows NT 5.1; rv:5.0) Gecko/20100101 Firefox/5.0',
-  'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; .NET CLR 1.1.432' +
-    '2; .NET CLR 2.0.50727; .NET4.0E; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NE' +
-    'T4.0C)',
-  'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.2; .NET CLR 1.1.4322; .NET CLR 2' +
-    '.0.50727; .NET4.0E; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET4.0C)',
-  'Mozilla/4.0 (compatible; MSIE 60; Windows NT 5.1; SV1; .NET CLR 2.0.50727)',
-  'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0; SLCC2; .NET CLR ' +
-    '2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C' +
-    '; .NET4.0E)',
-  'Opera/9.80 (Windows NT 5.1; U; zh-cn) Presto/2.9.168 Version/11.50',
-  'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)',
-  'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.507' +
-    '27; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022; .NET4.0E; .NET CLR 3.0.4506.2152' +
-    '; .NET CLR 3.5.30729; .NET4.0C)',
-  'Mozilla/5.0 (Windows; U; Windows NT 5.1; zh-CN) AppleWebKit/533.21.1 (KHTML, lik' +
-    'e Gecko) Version/5.0.5 Safari/533.21.1',
-  'Mozilla/5.0 (Windows; U; Windows NT 5.1; ) AppleWebKit/534.12 (KHTML, like Gecko' +
-    ') Maxthon/3.0 Safari/534.12',
-  'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 2.0.50727; TheW' +
-    'orld)'
-]
+sequelize
+  .authenticate()
+  .then(() => {
+    console.log('Connection has been established successfully.')
+    // databaseUse()
+  })
+  .catch(err => {
+    console.error('Unable to connect to the database:', err)
+  })
+const Comment = require('./models/comment')(sequelize, Seq)
 const fetchData = []
 //配置axios
 axios.defaults.responseType = 'arraybuffer'
@@ -104,88 +64,7 @@ axios.interceptors.request.use(
     console.log(err)
   }
 )
-/**
- * @description 爬取品牌&车型
- */
-async function fetchBrand() {
-  let pageUrls = []
-  let count = 0
-  let countSuccess = 0
-  const baseUrl = 'http://www.autohome.com.cn/grade/carhtml/'
-  const BrandFirstLetter = [
-    'A',
-    'B',
-    'C',
-    'D',
-    'F',
-    'G',
-    'H',
-    'J',
-    'K',
-    'L',
-    'M',
-    'N',
-    'O',
-    'P',
-    'Q',
-    'R',
-    'S',
-    'T',
-    'W',
-    'X',
-    'Y',
-    'Z'
-  ]
-  BrandFirstLetter.forEach(letter => {
-    count++
-    pageUrls.push(`${baseUrl}${letter}.html`)
-  })
-  for (let i = 0, len = pageUrls.length; i < len; i++) {
-    await new Promise((resolve, reject) => {
-      axios.get(pageUrls[i]).then(
-        res => {
-          let body = iconv.decode(res.data, 'gb2312')
-          let $ = cheerio.load(body)
-          let brands = $('dl')
-          for (var i = 0; i < brands.length; i++) {
-            let curBrands = brands.eq(i)
-            var obj = {
-              name: curBrands.find('dt div a').text(),
-              sub: []
-            }
-            fetchData.push(obj)
-            let series = curBrands.find('li')
-            for (var j = 0; j < series.length; j++) {
-              let curSeries = series.eq(j)
-              var obj = {
-                name: curSeries.find('h4 a').text(),
-                sub: [],
-                url: curSeries.find('h4 a').attr('href'),
-                bbs: curSeries
-                  .find('div')
-                  .eq(-1)
-                  .find('a')
-                  .eq(-2)
-                  .attr('href')
-              }
-              fetchData[fetchData.length - 1].sub.push(obj)
-            }
-          }
 
-          resolve()
-        },
-        err => {
-          if (err) {
-            console.log(err)
-            console.log('抓取该页面失败，重新抓取该页面..')
-          }
-        }
-      )
-    })
-  }
-  return fetchData
-}
-// fetchBrand()
 /**
  * @description 创造timeout
  * @param {any} time
@@ -204,50 +83,144 @@ function timeout(time) {
  */
 async function fakeMoving(page, lastHeight = 100) {
   const height = lastHeight + Math.random() * 10000
-  await page.evaluate(`
-    window.dispatchEvent(new UIEvent('focus'));  
-  `)
-  await page.evaluate(`
-    window.dispatchEvent(new UIEvent('click'));  
-  `)
+  const index = lastHeight + 1
+  await page.focus('body')
+  await page.click(`body`, {
+    button: 'left',
+    delay: 50
+  })
   await page.evaluate(`window.scroll(0,${height})`)
   return height
 }
 /**
  * @description 多次假操作
- * @param {any} page 
+ * @param {any} page
  */
-  async function fakeMovingMulit(page) {
+async function fakeMovingMulit(page) {
   let lastHeight = 100
-  for (let i = 0, len = 10 + Math.random() * 10; i < len; i++) {
-    lastHeight = await fakeMoving(page, lastHeight)
+  for (let i = 0, len = 4 + Math.random() * 10; i < len; i++) {
+    lastHeight = await fakeMoving(page, i)
     await timeout()
   }
 }
+let brandData = []
 /**
- * @description 启动puppeteer
- * @param {any} params
+ * @description 初始化url数据
  */
-async function run(params) {
-  const browser = await puppeteer.launch({
-    headless: false,
-    timeout: 0
-  })
-  let brandData = await fetchBrand()
-  for (let i = 0; i < brandData.length; i++) {
-    const curBrand = brandData[i]
-    for (let j = 0; j < curBrand.sub.length; j++) {
-      const page = await browser.newPage()
-      await page.goto(`https:${curBrand.sub[j].bbs}`)
-      await page.evaluate(
-        `document.querySelectorAll('.carea .tab a')[6].click()`
-      )
-      await page.goto(`https:${curBrand.sub[j].bbs.split('#')[0]}?type=101`)
-      let curCarComment = await goToComment(browser, page)
-      logger.info(JSON.stringify(curCarComment))
+async function init() {
+  const carUrls = path.join(__dirname, 'carUrls.json')
+  const lastFinish = path.join(__dirname, 'situation.json')
+  if (fs.existsSync(carUrls)) {
+    console.log('carUrls exists')
+   
+    brandData = JSON.parse(fs.readFileSync(carUrls))
+    console.log(urlMapped(brandData))
+  } else {
+    brandData = await fetchBrand()
+  }
+  if (fs.existsSync(lastFinish)) {
+  }
+}
+
+function urlMapped(carea) {
+  try {
+    return [].concat.apply(
+      [],
+      carea.map(brand => {
+        if (brand.hasOwnProperty('sub')) {
+          return brand.sub.map(serise => {
+            return serise.bbs || null
+          }).filter((url) => {
+            if (/www\.che168\.com/.test(url) || !url) {
+              return false
+            } else {
+              return true
+            }
+            
+          })
+        }
+        return []
+      })
+    )
+  } catch (err) {
+    console.log('carea error', carea, err)
+  }
+}
+
+function getBrandUrl() {
+  return brandData.shift()
+}
+
+/**
+ * @description 错误次数计算
+ * @returns
+ */
+function errCul() {
+  let times = 0
+  return {
+    getTime: function() {
+      return times
+    },
+    addTime: function() {
+      times++
     }
   }
-  await browser.close()
+}
+/**
+ * @description
+ */
+function situationRecord() {}
+
+/**
+ * @description 启动puppeteer
+ * @param {any}
+ */
+async function run() {
+  if (!run.errCul) {
+    run.errCul = errCul()
+  }
+  const browser = await puppeteer.launch({
+    headless: true,
+    timeout: 0,
+    args: [
+      `--user-agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36"`
+    ]
+  })
+  try {
+    while (brandData.length) {
+      const curBrand = getBrandUrl()
+      while (curBrand.sub.length) {
+        const curBrandSub = curBrand.sub.shift()
+        const page = await browser.newPage()
+        await page.goto(`https:${curBrandSub.bbs}`)
+        await page.click('.carea .tab li:nth-child(6) a', {
+          button: 'left',
+          delay: 50
+        })
+        await page.goto(`https:${curBrandSub.bbs.split('#')[0]}?type=101`)
+        let curCarComments = await goToComment(browser, page) //
+        for (let i = 0, len = curCarComments.length; i < len; i++) {
+          let { forumName, url, question, answers } = curCarComments[i]
+        }
+      }
+      fs.writeFileSync(
+        path.join(__dirname, 'carUrls.json'),
+        JSON.stringify(brandData)
+      )
+    }
+    await browser.close()
+  } catch (error) {
+    let errCul = run.errCul
+    if (errCul) {
+      if (errCul.getTime() < 2) {
+        await browser.close()
+        await timeout()
+        logger.error(`browser error`, error)
+        init()
+      }
+    }
+    console.log(`browser error`, error)
+  }
 }
 // let cssMap = await createCSSMap(page)
 // let carConfig = await getCarConfig(page)
@@ -258,36 +231,110 @@ async function run(params) {
  * @param {any} page
  */
 async function gotoQuality(page) {}
-
-async function goToComment(broswer, page) {
-  // let commentLen = await page.evaluate(
-  //   `document.querySelectorAll('#subcontent .a_topic').length`
-  // )
+/**
+ * @description 跳转到下一评论页
+ * @param {any} params
+ */
+async function goToNextCommentPage(page, index) {
+  try {
+    await page.click(`.pagearea a:nth-of-type(${index})`, clickOption)
+    await Promise.all([page.waitForNavigation(waitOption), timeout(2000)])
+  } catch (error) {}
+}
+/**
+ * @description 跳转到评论页获取当页的评论
+ * @param {any} browser
+ * @param {any} page
+ * @returns 当前页所有评论
+ */
+async function goToComment(browser, page) {
   let allCommentUrl = []
-  // for (let i = 0; i < commentLen; i++) {
-  allCommentUrl = await page.evaluate(
-    `Array.from(document.querySelectorAll('#subcontent .a_topic')).map((item)=>{
-        return item.href
-      })`
-  )
-  // }
-  // console.log(allComment)
-  let allCommentContent = []
-  for (let i = 0; i < allCommentUrl.length; i++) {
-    let curCarPage = await broswer.newPage()
-    await curCarPage.goto(allCommentUrl[i])
-    await timeout(2000)
-    await fakeMovingMulit(page)
-    await timeout()
-    let curPageComment = await curCarPage.evaluate(`Array.from(document.querySelectorAll('.rconten div[xname="content"]')).map((item)=>{
-      return item.textContent
-    })`)
-    allCommentContent.push({
-      question: curPageComment[0],
-      answers: curPageComment.slice(1)
-    })
-    curCarPage.close()
+  let pageContent = null
+  try {
+    pageContent = page.content()
+    allCommentUrl = await page.evaluate(
+      `Array.from(document.querySelectorAll('#subcontent .a_topic')).map((item)=>{
+          return item.href
+        })`
+    )
+
+    const forumName = await page.evaluate(
+      `
+      document.querySelector('.cbinfo h1').title
+      `
+    )
+
+    const allCommentContent = await getCommentFromUrls(
+      allCommentUrl,
+      forumName,
+      browser
+    )
+    const pagesLen = (await page.$$(`.pagearea a`)).length
+    for (let i = 0, len = pagesLen; i < len; i++) {
+      await goToNextCommentPage(page, i)
+      let curPageUrls = await page.evaluate(
+        `Array.from(document.querySelectorAll('#subcontent .a_topic')).map((item)=>{
+          return item.href
+        })`
+      )
+
+      await getCommentFromUrls(curPageUrls, forumName, browser)
+    }
+    page.close()
+    return allCommentContent
+  } catch (error) {
+    console.error('goTocommentError', error, pageContent)
   }
+}
+
+/**
+ * @description 获取所有Url对应的评论
+ * @param {any} urls
+ * @param {any} forumName
+ * @param {any} browser
+ * @returns
+ */
+async function getCommentFromUrls(urls, forumName, browser) {
+  const allCommentUrl = urls
+  let allCommentContent = []
+  let pageContent = null
+  try {
+    for (let i = 0; i < allCommentUrl.length; i++) {
+      let curCarPage = await browser.newPage()
+      await curCarPage.goto(allCommentUrl[i])
+      pageContent = await curCarPage.content()
+      await fakeMovingMulit(curCarPage)
+
+      let curPageComment = await curCarPage.evaluate(`Array.from(document.querySelectorAll('.rconten div[xname="content"]')).map((item)=>{
+        return item.textContent
+      })`)
+      allCommentContent.push({
+        forumName,
+        url: allCommentContent[i],
+        question: curPageComment[0],
+        answers: curPageComment.slice(1)
+      })
+      await Comment.create({
+        __url: allCommentUrl[i],
+        question_title: curPageComment[0],
+        question_detail: curPageComment[0],
+        question_forum: forumName,
+        question_answer: JSON.stringify(curPageComment.slice(1))
+      })
+      console.log(`finish${curPageComment[0]}`)
+      fs.writeFileSync(
+        path.join(__dirname, 'situation.json'),
+        JSON.stringify({
+          curForumName: forumName,
+          curUrl: allCommentUrl[i]
+        })
+      )
+      curCarPage.close()
+    }
+  } catch (error) {
+    console.log(`getCommentFromUrls`, allCommentUrl[i], pageContent, error)
+  }
+
   return allCommentContent
 }
 /**
@@ -345,8 +392,8 @@ async function getCarConfig(page) {
  * @description 获取车型论坛评论
  * @param {any} page
  */
-async function getCarComment(broswer) {
-  const page = await broswer.newPage()
+async function getCarComment(browser) {
+  const page = await browser.newPage()
   let QualityFeedback =
     'https://club.autohome.com.cn/bbs/forum-c-3170-1.html' + '?type=101'
   // let AskEveryOne = `https://zhidao.autohome.com.cn/summary/${(carID = 3710)}-4-1-${(page = 1)}.html`
@@ -359,4 +406,9 @@ async function getCarComment(broswer) {
   await timeout(2000)
   let quailtyComment = await page.evaluate(getCommentUrlOrd)
 }
-run()
+
+async function startScrapy() {
+  await init()
+  await run()
+}
+startScrapy()
